@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="models/gta6logo.png">
+    <title>GTA VI - Story Mode</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', 'Roboto', 'Helvetica Neue', sans-serif;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* Fullscreen Carousel */
+        .story-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        .story-bg.show {
+            opacity: 1;
+        }
+
+        /* Loading Spinner Corner (GTA Style) */
+        .loading-footer {
+            position: absolute;
+            bottom: 35px;
+            right: 40px;
+            display: flex;
+            align-items: center;
+            background: rgba(18, 18, 18, 0.9);
+            padding: 10px 22px;
+            border-radius: 4px;
+            gap: 15px;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 500;
+            text-transform: none; 
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            opacity: 0;
+            transition: opacity 1s ease;
+            z-index: 1000;
+        }
+
+        body.loaded .loading-footer {
+            opacity: 1;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, 1) 100%);
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #fff 0);
+            mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #fff 0);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Fade out state */
+        body.fade-out {
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        /* --- UI ELEMENTS (GTA STYLE) --- */
+        .gta-logo-corner {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 12vw;
+            max-width: 180px;
+            z-index: 1000;
+            filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .info-box {
+            position: absolute;
+            bottom: 220px; 
+            left: 30px;
+            width: 18vw;
+            min-width: 280px;
+            background: rgba(0,0,0,0.73);
+            color: #fff;
+            padding: 22px;
+            font-size: 15px;
+            line-height: 1.5;
+            border-left: 5px solid #fff;
+            z-index: 1000;
+            font-family: 'Arial', sans-serif;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            text-align: left;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+
+        .info-box b {
+            display: block;
+            margin-bottom: 8px;
+            color: #fff;
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+
+        .ui-show {
+            opacity: 1 !important;
+        }
+
+        /* --- Top Right UI (Social Club feel) --- */
+        .social-club-ui {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            padding: 8px 15px;
+            border-radius: 4px;
+            border-right: 3px solid #ffcc00;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            z-index: 1000;
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .social-club-ui img {
+            height: 20px;
+            width: auto;
+        }
+
+        .social-club-ui span {
+            text-transform: uppercase;
+            opacity: 0.9;
+        }
+
+        /* Error Overlay */
+        #errorOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            z-index: 5000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        .error-content {
+            max-width: 900px;
+            width: 90%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .error-header {
+            display: block;
+            max-width: 400px;
+            width: 35vw;
+            height: auto;
+            margin-bottom: 30px;
+        }
+
+        .error-line {
+            width: 100%;
+            height: 2px;
+            background-color: #fff;
+            margin: 20px 0;
+            opacity: 0.9;
+        }
+
+        .error-body {
+            font-size: 21px;
+            line-height: 1.6;
+            margin: 30px 0;
+            max-width: 95%;
+            font-weight: 400;
+        }
+
+        .error-body p {
+            margin-bottom: 20px;
+        }
+
+        .restart-prompt {
+            position: absolute;
+            bottom: 40px;
+            right: 60px;
+            display: flex;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .enter-key {
+            display: inline-block;
+            border: 2px solid #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+            font-size: 14px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .show-error {
+            display: flex !important;
+            opacity: 1 !important;
+        }
+    </style>
+</head>
+<body class="loaded">
+
+    <div id="bgStage" class="story-bg"></div>
+
+    <!-- UI Overlay -->
+    <div id="socialClub" class="social-club-ui">
+        <img src="models/logo-yellow.png" alt="R*">
+        <span>Rockstar Games Social Club Connection: Active</span>
+    </div>
+
+    <img id="gtaLogo" src="models/gta6logo.png" class="gta-logo-corner" alt="GTA VI Logo">
+    
+    <div id="infoBox" class="info-box">
+        <b>Did you know?</b>
+        <span id="infoText">Entering Story Mode...</span>
+    </div>
+
+    <!-- Bottom Right Loader -->
+    <div id="loadingFooter" class="loading-footer">
+        <span id="loaderText">Entering Story Mode</span>
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Error Alert Overlay -->
+    <div id="errorOverlay">
+        <div class="error-content">
+            <img src="models/gc.png" class="error-header" alt="ALERT">
+            <div class="error-line"></div>
+            <div class="error-body">
+                <p>The game has unexpectedly stopped working.</p>
+                <p>This may be caused by:
+                    Insufficient system memory (RAM)
+                    Unsupported device or drivers
+                    Background applications interfering with performance
+                </p>
+                <p>Your progress may not have been saved.
+                    Please restart the game and try again.
+                </p>
+            </div>
+            <div class="error-line"></div>
+        </div>
+        <div id="restartPrompt" class="restart-prompt">
+            <span>RESTART GAME</span>
+            <span class="enter-key">ENTER</span>
+        </div>
+    </div>
+
+    <script>
+        const imageSet = [
+            'models/offline/1.png',
+            'models/offline/2.png',
+            'models/offline/3.png',
+            'models/offline/4.png',
+            'models/offline/5.png'
+        ];
+        
+        const tips = [
+            "Completing missions unlocks new safehouses and vehicles across the map.",
+            "Check your phone for messages from contacts; they often lead to new opportunities.",
+            "Running and swimming increases your lung capacity and overall stamina.",
+            "Visit the local Ammu-Nation to stock up on gear before heading into a big heist.",
+            "Invest in stocks via the LCN or BAWSAQ to grow your wealth while you sleep."
+        ];
+
+        let currentIndex = 0;
+        let imagesShown = 0;
+        let isErrorMode = false;
+        const bgStage = document.getElementById('bgStage');
+        const loaderText = document.getElementById('loaderText');
+        const loadingFooter = document.getElementById('loadingFooter');
+        const errorOverlay = document.getElementById('errorOverlay');
+        const restartPrompt = document.getElementById('restartPrompt');
+        const infoBox = document.getElementById('infoBox');
+        const infoText = document.getElementById('infoText');
+        const gtaLogo = document.getElementById('gtaLogo');
+        const socialClub = document.getElementById('socialClub');
+
+        function cycleImages() {
+            if (isErrorMode) return;
+
+            // Trigger error after showing all 5 images
+            if (imagesShown >= imageSet.length) {
+                triggerError();
+                return;
+            }
+
+            // Fade out
+            bgStage.classList.remove('show');
+            
+            setTimeout(() => {
+                if (isErrorMode) return;
+                // Change source
+                bgStage.style.backgroundImage = `url('${imageSet[currentIndex]}')`;
+                
+                // Update text
+                loaderText.innerText = "Entering Story Mode";
+                infoText.innerText = tips[currentIndex] || tips[0];
+                
+                // Fade in
+                bgStage.classList.add('show');
+                
+                // Update tracking
+                currentIndex = (currentIndex + 1) % imageSet.length;
+                imagesShown++;
+                
+            }, 1500); // Wait for fade out
+        }
+
+        function triggerError() {
+            isErrorMode = true;
+            if (window.storyInterval) clearInterval(window.storyInterval);
+
+            // Hide loading elements
+            loadingFooter.style.opacity = '0';
+            gtaLogo.classList.remove('ui-show');
+            infoBox.classList.remove('ui-show');
+            socialClub.classList.remove('ui-show');
+            bgStage.classList.remove('show');
+
+            setTimeout(() => {
+                // Show Error Overlay
+                errorOverlay.classList.add('show-error');
+                
+                // Fade in restart prompt after a short delay
+                setTimeout(() => {
+                    restartPrompt.style.opacity = '1';
+                }, 1500);
+            }, 1000);
+        }
+
+        // Trigger first image
+        window.showStory = function() {
+            isErrorMode = false;
+            imagesShown = 0;
+            errorOverlay.classList.remove('show-error');
+            restartPrompt.style.opacity = '0';
+            loadingFooter.style.opacity = '1';
+            gtaLogo.classList.add('ui-show');
+            infoBox.classList.add('ui-show');
+            socialClub.classList.add('ui-show');
+            
+            document.body.classList.remove('fade-out');
+            currentIndex = 0;
+            cycleImages();
+            
+            // Start cycle
+            if(window.storyInterval) clearInterval(window.storyInterval);
+            window.storyInterval = setInterval(cycleImages, 7000);
+        };
+
+        window.hideStory = function() {
+            document.body.classList.add('fade-out');
+            gtaLogo.classList.remove('ui-show');
+            infoBox.classList.remove('ui-show');
+            socialClub.classList.remove('ui-show');
+            if(window.storyInterval) clearInterval(window.storyInterval);
+        };
+
+        // If loaded directly for testing
+        if (window.self === window.top) {
+            document.addEventListener('DOMContentLoaded', showStory);
+        }
+
+        // Input handling
+        function restartGame() {
+            // Restore cursor and reload main index
+            document.documentElement.style.cursor = 'default';
+            if (window.top) {
+                window.top.location.href = 'index.html';
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (isErrorMode && e.key === 'Enter') {
+                restartGame();
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                if (window.parent && window.parent.closeStory) {
+                    window.parent.closeStory();
+                } else {
+                    window.location.href = 'index.html?skip=true';
+                }
+            }
+        });
+
+        errorOverlay.addEventListener('click', () => {
+            if (isErrorMode) {
+                restartGame();
+            }
+        });
+    </script>
+</body>
+</html>

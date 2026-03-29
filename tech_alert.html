@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="models/gta6logo.png">
+    <title>Grand Theft Auto VI</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* --- Alert / Start Screen --- */
+        #startOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            transition: opacity 0.8s ease-in-out;
+            cursor: default;
+        }
+
+        .alert-content {
+            max-width: 800px;
+            width: 90%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .alert-header {
+            display: block;
+            max-width: 350px;
+            width: 30vw;
+            height: auto;
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+        }
+
+        .alert-line {
+            width: 100%;
+            height: 2px;
+            background-color: #fff;
+            margin: 15px 0;
+            opacity: 0.8;
+        }
+
+        .alert-body {
+            font-size: 19px;
+            line-height: 1.5;
+            margin: 25px 0;
+            max-width: 95%;
+        }
+
+        .alert-body p {
+            margin-bottom: 15px;
+        }
+
+        .enter-prompt-corner {
+            position: absolute;
+            bottom: 40px;
+            right: 60px;
+            display: flex;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            opacity: 0.9;
+        }
+
+        .enter-key-icon {
+            display: inline-block;
+            border: 2px solid #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+            font-size: 14px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .start-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* --------------------------- */
+
+        .screen-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* ----- STAGE ELEMENTS (LOGOS & TEXT) ----- */
+        .stage-element {
+            position: absolute;
+            opacity: 0;
+            transform: scale(0.85); 
+            transition: opacity 1.5s ease-in-out, transform 4s ease-out, filter 1.5s ease-in-out;
+            pointer-events: none; 
+        }
+
+        .stage-element img {
+            max-width: 250px;
+            width: 20vw;
+            min-width: 150px;
+            display: block;
+        }
+
+        .text-presentation {
+            font-size: 28px;
+            letter-spacing: 6px;
+            font-weight: 300;
+            text-transform: uppercase;
+            color: #ffffff;
+            text-align: center;
+            font-family: 'Chalet', 'Helvetica Neue', Arial, sans-serif;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        /* Active classes */
+        .show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Exit Animation */
+        .hide {
+            opacity: 0;
+            transform: scale(1.1); 
+            filter: blur(15px); 
+            transition: opacity 1.2s ease-in-out, transform 1.2s ease-in, filter 1.2s ease-in;
+        }
+
+        /* ----- GIF CONTAINER ----- */
+        .gif-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            z-index: 10;
+            pointer-events: none; 
+            background-color: #000;
+        }
+
+        .gif-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; 
+        }
+
+        .show-gif {
+            opacity: 1;
+            pointer-events: auto; 
+        }
+
+        /* ----- DISCLAIMER SCREEN ----- */
+        .disclaimer-container {
+            position: absolute;
+            opacity: 0;
+            color: #b0b0b0; 
+            font-size: 14px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            text-align: justify;
+            max-width: 85%;
+            line-height: 1.4;
+            transition: opacity 1.5s ease-in-out;
+            pointer-events: none; 
+            z-index: 20; 
+        }
+        
+        @media (min-width: 1024px) {
+            .disclaimer-container {
+                max-width: 900px;
+                font-size: 16px;
+                line-height: 1.6;
+            }
+        }
+
+        .disclaimer-container p {
+            margin-bottom: 1.5em;
+        }
+
+        /* Small animated spinner placed below paragraphs */
+        .disclaimer-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #333;
+            border-top-color: #a0a0a0;
+            border-radius: 50%;
+            margin-right: 12px;
+            box-sizing: border-box;
+            animation: spin 1s linear infinite; 
+            flex-shrink: 0; 
+        }
+
+        /* 2nd loader is yellow */
+        .disclaimer-spinner.yellow {
+            border-top-color: #fcba03; 
+        }
+
+        .loader-line {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 8px !important; 
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .disclaimer-container.show {
+            opacity: 1;
+        }
+
+        /* ----- LOADING STAGE (1m and 1p) ----- */
+        .loading-stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            z-index: 50; 
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .loading-bg {
+            position: absolute;
+            top: 0;
+            left: -5%; /* Start offset for panning */
+            width: 115%; /* Extra width to allow for movement */
+            height: 100%;
+            object-fit: cover;
+            transform: scale(1.1) translateX(2%);
+            transition: transform 10s linear;
+        }
+
+        .loading-person {
+            position: absolute;
+            bottom: -5vh; 
+            left: 50%;
+            height: 100vh;
+            width: auto;
+            opacity: 0;
+            transform: translateX(-50%) scale(1.02);
+            transition: opacity 2s ease-in-out, transform 10s linear; /* Note: Linear for the continuous opposite pan */
+            z-index: 60;
+            filter: drop-shadow(0 0 30px rgba(0,0,0,0.4));
+            pointer-events: none;
+        }
+
+        /* --- INTERACTIVE OVERLAYS --- */
+        .vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 70;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+            pointer-events: none;
+        }
+
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 71;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        .loading-stage.show-bg {
+            opacity: 1;
+        }
+
+        .loading-stage.show-bg .loading-bg {
+            transform: scale(1.02);
+        }
+
+        .loading-person.show-person {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        /* --- THE TILTED FRAME STYLE --- */
+        .scene-wrap {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 2000px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .scene-frame {
+            position: relative;
+            width: 90vw;
+            height: 90vh;
+            transform: rotateZ(-2.5deg) scale(0.95);
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            background: #000;
+        }
+
+        .scene-frame .loading-bg {
+            position: absolute;
+        }
+
+        /* Character outside frame for 3D POP effect */
+        .scene-wrap > .loading-person {
+            position: absolute;
+            z-index: 60; /* Higher than scene-frame */
+        }
+
+        /* --- UI ELEMENTS --- */
+        .gta-logo-corner {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 12vw;
+            max-width: 180px;
+            z-index: 1000;
+            filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .info-box {
+            position: absolute;
+            bottom: 220px; /* Moved up to avoid overlapping with logo */
+            left: 30px;
+            width: 18vw;
+            min-width: 280px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            border-left: 5px solid #fff;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            text-align: left;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .info-box b {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+            text-transform: uppercase;
+            font-size: 13px;
+        }
+
+        .ui-show {
+            opacity: 1 !important;
+        }
+
+        /* --- Transitions for Cycling --- */
+        .fade-out {
+            opacity: 0 !important;
+            filter: blur(30px) brightness(1.5); /* Premium cinematic transition effect */
+            transition: opacity 1.2s ease-in-out, filter 1.2s ease-in-out !important;
+        }
+
+        /* --- MENU SCREEN --- */
+        #menuScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000 url('models/menu_bg.png') no-repeat center center / cover;
+            display: none;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            z-index: 10000;
+        }
+
+        .menu-logo {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 15vw;
+            max-width: 250px;
+            filter: drop-shadow(0 0 20px rgba(0,0,0,0.8));
+        }
+
+        .bottom-nav {
+            position: absolute;
+            bottom: 0px;
+            right: 0px;
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            padding: 20px 40px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            gap: 40px;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .nav-link {
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.2s ease;
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+            color: #ffcc00; /* GTA Yellow on hover */
+            transform: scale(1.05);
+        }
+
+        .nav-link.active {
+            opacity: 1;
+            color: #fff;
+            position: relative;
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #fff;
+        }
+
+        /* --- Explicit Stacking --- */
+        #startOverlay { z-index: 9999; }
+        .gif-container { z-index: 100; }
+        .disclaimer-container { z-index: 200; }
+        .loading-stage { z-index: 50; }
+        .screen-container { z-index: 150; } 
+        #menuScreen { z-index: 10000; } 
+        #settingsIframe { z-index: 20000; }
+        #onlineIframe { z-index: 15000; }
+    </style>
+</head>
+<body>
+    <!-- Preloaded Settings iframe -->
+    <iframe id="settingsIframe" src="settings.html" style="position: absolute; top:0; left:0; width:100%; height:100%; border:none; opacity: 0; pointer-events: none;"></iframe>
+    
+    <!-- Preloaded Online iframe -->
+    <iframe id="onlineIframe" src="online.html" style="position: absolute; top:0; left:0; width:100%; height:100%; border:none; opacity: 0; pointer-events: none;"></iframe>
+    
+    <!-- Menu Screen (Post-Loading) -->
+    <div id="menuScreen">
+        <img src="models/gta6logo.png" class="menu-logo" alt="GTA VI">
+        <div class="bottom-nav">
+            <span class="nav-link">QUIT</span>
+            <span class="nav-link" onclick="goToSettings()">SETTINGS</span>
+            <span class="nav-link" onclick="goToOnline()">ONLINE</span>
+            <span class="nav-link">STORY MODE</span>
+        </div>
+    </div>
+    <!-- Alert / Start Screen -->
+    <div id="startOverlay">
+        <div class="alert-content">
+            <img src="models/alert.png" class="alert-header" alt="ALERT">
+            <div class="alert-line"></div>
+            <div class="alert-body">
+                <p>This version of the game is currently in development and may not be fully optimized for all devices. Your system may experience performance issues if available RAM is low, background applications are running, or device specifications do not meet recommended requirements. For the best experience, please ensure sufficient free memory is available and unnecessary apps are closed. Some features, graphics, and performance elements are subject to change in future updates.</p>
+            </div>
+            <div class="alert-line"></div>
+        </div>
+        <div class="enter-prompt-corner">
+        <span class="enter-key-icon">ENTER</span>
+        </div>
+    </div>
+
+    <!-- Background Music (Updated slashes to standard web forward slashes) -->
+    <audio id="bgMusic" src="models/audio.mp3" loop></audio>
+
+    <!-- Main GIF Container -->
+    <div id="gifContainer" class="gif-container">
+        <!-- Kept standard forward-slashes for paths to ensure no loading issues -->
+        <img src="models/logo.gif" alt="Background loading sequence">
+    </div>
+
+    <!-- Loading Stage (Cycling Images) -->
+    <div id="loadingStage" class="loading-stage">
+        <div class="scene-wrap">
+            <!-- Game Info Box -->
+            <div id="infoBox" class="info-box">
+                <b>Did you know?</b>
+                <span id="infoText">You can customize your ride at any Los Santos Customs location in the city. Keep an eye out for the spray can icon on your map.</span>
+            </div>
+
+            <!-- Global Logo -->
+            <img id="gtaLogo" src="models/gta6logo.png" class="gta-logo-corner" alt="GTA VI Logo">
+
+            <!-- The Tilted Scene -->
+            <div class="scene-frame">
+                <div class="vignette"></div>
+                <div class="scanlines"></div>
+                <img id="loadingBg" src="models/lodingss/1m.png" class="loading-bg" alt="Loading Background">
+            </div>
+
+            <img id="personImage" src="models/lodingss/1p.png" class="loading-person" alt="Character">
+        </div>
+    </div>
+
+    <!-- Intro Sequence Container -->
+    <div class="screen-container">
+        
+        <!-- Logo 1 wrapper -->
+        <div id="logo1" class="stage-element">
+            <img src="models/logo-yellow.png" alt="Rockstar Logo Yellow">
+        </div>
+        
+        <!-- Logo 2 wrapper -->
+        <div id="logo2" class="stage-element">
+            <img src="models/logo-blue.png" alt="Rockstar Logo Blue">
+        </div>
+        
+        <!-- Text wrapper -->
+        <div id="presentationText" class="stage-element text-presentation">
+            <div>Rockstar Games Presents</div>
+        </div>
+
+        <!-- Disclaimer Text -->
+        <div id="disclaimerScreen" class="disclaimer-container">
+            <p>This video game is a work of fiction. Any characters, names, events, organizations, or locations depicted are either imaginary or used in a fictional manner. Any resemblance to real persons, living or dead, or actual events is purely coincidental.</p>
+            <p>The creators and publishers of this game do not endorse, encourage, or promote any behavior displayed within the game. All actions shown are for entertainment purposes only.</p>
+            <p>Unauthorized copying, distribution, modification, reverse engineering, or public performance of this software is strictly prohibited and may result in legal action.</p>
+            
+            <br>
+
+            <!-- Loading Icons -->
+            <p class="loader-line">
+                <span class="disclaimer-spinner"></span>
+                <span>Do not turn off or exit the system while the save icon is visible.</span>
+            </p>
+            <p class="loader-line">
+                <span class="disclaimer-spinner yellow"></span>
+                <span>Do not turn off or exit the system while the loading icon is visible.</span>
+            </p>
+            <p class="loader-line">
+                <span class="disclaimer-spinner"></span>
+                <span>Do not turn off or exit the system while the Rockstar cloud save icon is visible.</span>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const startOverlay = document.getElementById('startOverlay');
+            const bgMusic = document.getElementById('bgMusic');
+
+            const logo1 = document.getElementById('logo1');
+            const logo2 = document.getElementById('logo2');
+            const text = document.getElementById('presentationText');
+            const gifContainer = document.getElementById('gifContainer');
+            const disclaimer = document.getElementById('disclaimerScreen');
+            const loadingStage = document.getElementById('loadingStage');
+            const loadingBg = document.getElementById('loadingBg');
+            const personImage = document.getElementById('personImage');
+            const gtaLogo = document.getElementById('gtaLogo');
+            const infoBox = document.getElementById('infoBox');
+            const infoText = document.getElementById('infoText');
+            const sceneFrame = document.querySelector('.scene-frame');
+
+            const menuScreen = document.getElementById('menuScreen');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('skip') === 'true') {
+                startOverlay.style.display = 'none';
+                menuScreen.style.display = 'block';
+                menuScreen.style.transform = 'scale(1.2)';
+                menuScreen.style.opacity = '0';
+                
+                // Allow reflow, then apply transition
+                requestAnimationFrame(() => {
+                    menuScreen.style.transition = 'transform 0.6s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.4s ease';
+                    menuScreen.style.transform = 'scale(1)';
+                    menuScreen.style.opacity = '1';
+                });
+                return; // Skip the rest of the initialization
+            }
+
+            // Handle Enter key to start (also allow click for mobile/accessibility)
+            const handleStart = (e) => {
+                if (e.type === 'keydown' && e.key !== 'Enter') return;
+                
+                // Remove listeners to prevent multiple triggers
+                document.removeEventListener('keydown', handleStart);
+                startOverlay.removeEventListener('click', handleStart);
+
+                // 0. Hide the mouse cursor for immersion
+                document.documentElement.style.cursor = 'none';
+
+                // 1. Hide the start overlay
+                startOverlay.classList.add('start-hidden');
+
+                // 2. Play the background audio
+                bgMusic.volume = 0.6;
+                bgMusic.play().catch(e => {
+                    console.log("Could not play audio: ", e);
+                });
+
+                // 3. Initiate the sequence
+                startSequence();
+            };
+
+            document.addEventListener('keydown', handleStart);
+            startOverlay.addEventListener('click', handleStart);
+
+
+            function startSequence() {
+                const fadeDuration = 1500;
+                let timeTracker = 200; // Small delay before first animation triggers
+
+                // Step 1: Fade IN Logo 1
+                setTimeout(() => {
+                    logo1.classList.add('show');
+                }, timeTracker);
+
+                // Fade OUT Logo 1
+                timeTracker += 3000;
+                setTimeout(() => {
+                    logo1.classList.remove('show');
+                    logo1.classList.add('hide');
+                }, timeTracker);
+
+                // Step 2: Fade IN Logo 2
+                timeTracker += fadeDuration; 
+                setTimeout(() => {
+                    logo2.classList.add('show');
+                }, timeTracker);
+
+                // Fade OUT Logo 2
+                timeTracker += 3000;
+                setTimeout(() => {
+                    logo2.classList.remove('show');
+                    logo2.classList.add('hide');
+                }, timeTracker);
+
+                // Step 3: Fade IN "Rockstar Games Presents"
+                timeTracker += fadeDuration;
+                setTimeout(() => {
+                    text.classList.add('show');
+                }, timeTracker);
+
+                // Fade OUT Text
+                timeTracker += 3500;
+                setTimeout(() => {
+                    text.classList.remove('show');
+                    text.classList.add('hide');
+                }, timeTracker);
+
+                // Step 4: Fade IN the GIF sequence
+                timeTracker += 1500; 
+                setTimeout(() => {
+                    gifContainer.classList.add('show-gif');
+                }, timeTracker);
+
+                // Step 5: FADE OUT THE GIF
+                timeTracker += 6000; 
+                setTimeout(() => {
+                    gifContainer.classList.remove('show-gif');
+                    gifContainer.style.opacity = '0'; 
+                }, timeTracker);
+
+                // Step 6: Fade IN Disclaimer Text 
+                timeTracker += 2000; 
+                setTimeout(() => {
+                    disclaimer.classList.add('show');
+                }, timeTracker);
+
+                // Fade OUT Disclaimer
+                timeTracker += 5500; 
+                setTimeout(() => {
+                    disclaimer.classList.remove('show');
+                }, timeTracker);
+
+                // Step 7: Start the Cycling Loading Screen after disclaimer
+                timeTracker += 2000;
+                setTimeout(() => {
+                    startImageCycle();
+                }, timeTracker);
+            }
+
+            // Image Cycling Logic (7 sets)
+            let currentSet = 1;
+            const totalSets = 7;
+            const displayTime = 6000; // How long each set shows
+            const transitionTime = 1500; // Fade duration
+
+            function startImageCycle() {
+                showSet(currentSet);
+                
+                // Show UI elements
+                gtaLogo.classList.add('ui-show');
+                infoBox.classList.add('ui-show');
+
+                const cycleInterval = setInterval(() => {
+                    // Start fading out current
+                    loadingStage.classList.add('fade-out');
+                    
+                    setTimeout(() => {
+                        currentSet = (currentSet % totalSets) + 1;
+                        
+                        // Transition to MENU after completing all 7 sets
+                        if (currentSet === 1) {
+                            clearInterval(cycleInterval);
+                            finishLoading();
+                            return;
+                        }
+
+                        // Swap Images
+                        loadingBg.src = `models/lodingss/${currentSet}m.png`;
+                        personImage.src = `models/lodingss/${currentSet}p.png`;
+                        
+                        // Reset classes
+                        personImage.classList.remove('show-person');
+                        loadingStage.classList.remove('fade-out');
+                        
+                        // Show next set
+                        showSet(currentSet);
+                    }, transitionTime);
+                    
+                }, displayTime + transitionTime);
+            }
+
+            function finishLoading() {
+                // Fade out loading stage
+                loadingStage.classList.add('fade-out');
+                gtaLogo.classList.remove('ui-show');
+                infoBox.classList.remove('ui-show');
+
+                // Stop and Reset Background Music for the menu
+                bgMusic.pause();
+                bgMusic.currentTime = 0;
+
+                setTimeout(() => {
+                    // Hide loading stage
+                    loadingStage.classList.remove('show-bg');
+                    
+                    // Show Menu screen
+                    menuScreen.style.display = 'block';
+                    setTimeout(() => {
+                        menuScreen.style.opacity = '1';
+                        // Re-enable mouse cursor for menu navigation
+                        document.documentElement.style.cursor = 'default';
+                    }, 100);
+                    
+                }, transitionTime);
+            }
+
+            function showSet(index) {
+                // Ensure background is visible
+                loadingStage.classList.add('show-bg');
+                
+                // Update tipping text per index for extra realism
+                const tips = [
+                    "You can customize your ride at any Los Santos Customs location in the city.",
+                    "Completing missions unlocks new safehouses and vehicles across the map.",
+                    "Check your phone for messages from contacts; they often lead to new opportunities.",
+                    "Running and swimming increases your lung capacity and overall stamina.",
+                    "Visit the local Ammu-Nation to stock up on gear before heading into a big heist.",
+                    "Invest in stocks via the LCN or BAWSAQ to grow your wealth while you sleep.",
+                    "Keep an eye on the mini-map for blue and red blips indicating random events."
+                ];
+                if (infoText) infoText.innerText = tips[index - 1] || tips[0];
+
+                // Vary the rotation (the "cuts") per background set for extra realism
+                const angles = [-2.8, 1.8, -3.2, 2.5, -2.1, 3.4, -1.8]; // Distinct angles for each of the 7 sets
+                const currentAngle = angles[index - 1] || -2.5;
+                if (sceneFrame) {
+                    sceneFrame.style.transform = `rotateZ(${currentAngle}deg) scale(0.95)`;
+                }
+
+                // Reset and Trigger Pan (Right to Left)
+                loadingBg.style.transition = 'none';
+                loadingBg.style.transform = 'scale(1.1) translateX(2%)';
+                loadingBg.offsetHeight; // Force reflow
+                loadingBg.style.transition = 'transform 10s linear';
+                loadingBg.style.transform = 'scale(1.1) translateX(-5%)';
+
+                // Standardized centering for all images
+                personImage.style.left = "50%";
+                personImage.style.bottom = "0";
+
+                // Specific adjustments per set
+                if (index === 1) {
+                    personImage.style.left = "35%"; // Move quite leftside
+                } else if (index === 2) {
+                    personImage.style.bottom = "-15vh"; // Move quite down
+                }
+
+                // Characters move in OPPOSITE direction (Left to Right) for deep parallax
+                personImage.style.transition = 'none';
+                personImage.style.transform = 'translateX(-54%) scale(1)'; // Start slightly left of center
+                personImage.offsetHeight; // Force reflow
+                personImage.style.transition = 'opacity 2s ease-in-out, transform 10s linear';
+                personImage.style.transform = 'translateX(-46%) scale(1)'; // Move slightly right of center
+
+                // Character slide-in after a short delay
+                setTimeout(() => {
+                    personImage.classList.add('show-person');
+                }, 800);
+            }
+
+        });
+
+        // External navigation function
+        function goToSettings() {
+            const menuScreen = document.getElementById('menuScreen');
+            menuScreen.style.transition = 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease';
+            menuScreen.style.transform = 'scale(1.2)';
+            menuScreen.style.opacity = '0';
+            
+            const iframe = document.getElementById('settingsIframe');
+            iframe.style.opacity = '1';
+            iframe.style.pointerEvents = 'auto';
+            if (iframe.contentWindow && iframe.contentWindow.showSettings) {
+                iframe.contentWindow.showSettings(); // Trigger the inner animation
+            }
+        }
+
+        // Accessed by the iframe when 'ESC' or Back is pressed
+        window.closeSettings = function() {
+            const menuScreen = document.getElementById('menuScreen');
+            menuScreen.style.transition = 'transform 0.6s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.4s ease';
+            menuScreen.style.transform = 'scale(1)';
+            menuScreen.style.opacity = '1';
+
+            // Wait until the settings iframe finishes its fade out before hiding it completely
+            setTimeout(() => {
+                const iframe = document.getElementById('settingsIframe');
+                iframe.style.opacity = '0';
+                iframe.style.pointerEvents = 'none';
+            }, 600);
+        };
+
+        // --- ONLINE MODE FUNCTIONS ---
+        function goToOnline() {
+            const menuScreen = document.getElementById('menuScreen');
+            menuScreen.style.transition = 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease';
+            menuScreen.style.transform = 'scale(1.2)';
+            menuScreen.style.opacity = '0';
+            
+            const iframe = document.getElementById('onlineIframe');
+            iframe.style.opacity = '1';
+            iframe.style.pointerEvents = 'auto';
+            if (iframe.contentWindow && iframe.contentWindow.showOnline) {
+                iframe.contentWindow.showOnline();
+            }
+        }
+
+        window.closeOnline = function() {
+            const menuScreen = document.getElementById('menuScreen');
+            menuScreen.style.transition = 'transform 0.6s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.4s ease';
+            menuScreen.style.transform = 'scale(1)';
+            menuScreen.style.opacity = '1';
+
+            setTimeout(() => {
+                const iframe = document.getElementById('onlineIframe');
+                iframe.style.opacity = '0';
+                iframe.style.pointerEvents = 'none';
+                if (iframe.contentWindow && iframe.contentWindow.hideOnline) {
+                    iframe.contentWindow.hideOnline();
+                }
+            }, 600);
+        };
+    </script>
+</body>
+</html>

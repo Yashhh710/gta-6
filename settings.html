@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="models/gta6logo.png">
+    <title>GTA VI - Settings</title>
+    <style>
+        /* Base Reset & Fonts */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', 'Roboto', sans-serif;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: transparent; /* Changed from #000 so the iframe is see-through */
+        }
+
+        /* Page Transition Fades */
+        body.fade-out .background-overlay {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .settings-panel {
+            width: 80%;
+            max-width: 1200px;
+            height: 80%;
+            max-height: 800px;
+            background: rgba(0, 0, 0, 0.7);
+            border-top: 5px solid #fff;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            position: relative;
+            
+            /* Mac-like minimize start state */
+            transform-origin: center bottom;
+            transform: scale(0.5) translateY(50vh);
+            opacity: 0;
+            transition: transform 0.6s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.4s ease;
+        }
+        
+        body.loaded .settings-panel {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+        
+        body.fade-out .settings-panel {
+            transform: scale(0.3) translateY(100vh);
+            opacity: 0;
+        }
+
+        /* Fullscreen Overlay with Blurred Background */
+        .background-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('models/sbg.png') no-repeat center center/cover;
+            background-color: #1a1a1a;
+            filter: blur(8px) brightness(0.7);
+            transform: scale(1.05);
+            z-index: 0;
+        }
+
+        /* Main Screen Container */
+        .screen-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        /* Top Header */
+        .panel-header {
+            width: 100%;
+            padding: 15px 30px;
+            background: #fff;
+            color: #000;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        /* Body (Sidebar + Content) */
+        .panel-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 30%;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 0;
+        }
+
+        /* Custom Scrollbar for Webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .menu-item {
+            padding: 15px 30px;
+            color: #ccc;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            padding-left: 35px; /* Slight indent on active */
+        }
+
+        /* Content Area Styling */
+        .content-area {
+            width: 70%;
+            padding: 20px 40px;
+            overflow-y: auto;
+            color: #fff;
+            position: relative;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Settings Rows / Items */
+        .setting-section-title {
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 25px 0 15px 0;
+            color: #aaa;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            line-height: 0.1em;
+        }
+        
+        .setting-section-title span {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 0 15px;
+        }
+
+        .setting-section-title:first-child {
+            margin-top: 10px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            transition: background 0.2s;
+        }
+
+        .setting-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .setting-label {
+            font-size: 1.05rem;
+            color: #e0e0e0;
+        }
+
+        .setting-control {
+            display: flex;
+            align-items: center;
+            min-width: 250px;
+            justify-content: flex-end;
+            position: relative;
+        }
+
+        /* Select / Dropdown Style (GTA style uses left/right arrows) */
+        .gta-select {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .gta-select .arrow {
+            color: #aaa;
+            font-size: 1.2rem;
+            transition: color 0.2s;
+        }
+        
+        .gta-select .arrow.disabled {
+            color: rgba(255,255,255,0.1);
+            cursor: default;
+        }
+
+        .gta-select:hover .arrow:not(.disabled) {
+            color: #fff;
+        }
+
+        .gta-select-value {
+            min-width: 120px;
+            text-align: right;
+        }
+
+        /* Video Memory Bar */
+        .memory-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .memory-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .memory-bar-wrapper {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .memory-fill {
+            height: 100%;
+            background: #4caf50;
+            width: 35%; /* Default 35% */
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        
+        .memory-fill.warning {
+            background: #ffeb3b;
+        }
+
+        .memory-fill.danger {
+            background: #f44336;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            width: 45px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 11px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-switch.on {
+            background: #fff;
+        }
+
+        .toggle-switch .knob {
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .toggle-switch.on .knob {
+            transform: translateX(23px);
+            background: #000;
+        }
+
+        /* Range Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 200px;
+            background: transparent;
+        }
+        
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            height: 16px;
+            width: 8px;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .slider-value-display {
+            margin-left: 15px;
+            min-width: 40px;
+            text-align: right;
+            font-weight: bold;
+        }
+
+        /* Footer / Button Controls */
+        .panel-footer {
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+        }
+        
+        .footer-desc {
+            color: #aaa;
+            font-size: 0.95rem;
+            flex: 1;
+        }
+
+        .footer-buttons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-btn {
+            background: transparent;
+            color: #fff;
+            border: none;
+            font-family: inherit;
+            font-size: 1rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .footer-btn:hover {
+            opacity: 1;
+        }
+
+        .key-indicator {
+            background: #fff;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        /* Interactive Keyboard Layout Helper */
+        .keyboard-bind-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 5px 15px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .keyboard-bind-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+        }
+        .keyboard-bind-btn.listening {
+            background: red;
+            color: white;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.5; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="background-overlay"></div>
+
+    <div class="screen-container">
+        <div class="settings-panel">
+            <div class="panel-header">Settings</div>
+            
+            <div class="panel-body">
+                <!-- Sidebar -->
+                <div class="sidebar" id="sidebar">
+                    <div class="menu-item" data-target="gamepad">Gamepad</div>
+                    <div class="menu-item" data-target="keyboard">Keyboard / Mouse</div>
+                    <div class="menu-item" data-target="bindings">Key Bindings</div>
+                    <div class="menu-item" data-target="audio">Audio</div>
+                    <div class="menu-item" data-target="camera">Camera</div>
+                    <div class="menu-item" data-target="display">Display</div>
+                    <div class="menu-item active" data-target="graphics">Graphics</div>
+                    <div class="menu-item" data-target="voice">Voice Chat</div>
+                    <div class="menu-item" data-target="notifications">Notifications</div>
+                    <div class="menu-item" data-target="editor">Rockstar Editor</div>
+                </div>
+
+                <!-- Content Area -->
+                <div class="content-area" id="content-area">
+                    
+                    <!-- GRAPHICS TAB (Default) -->
+                    <div class="tab-content active" id="tab-graphics">
+                        <!-- VRAM Bar -->
+                        <div class="memory-container">
+                            <div class="memory-text">
+                                <span>Video Memory: <span id="vram-current">2840</span> MB / 8192 MB</span>
+                            </div>
+                            <div class="memory-bar-wrapper">
+                                <div class="memory-fill" id="vram-bar"></div>
+                            </div>
+                        </div>
+
+                        <div class="setting-section-title"><span>Presets</span></div>
+                        
+                        <div class="setting-row" data-desc="Adjusts multiple graphics settings based on a unified performance target.">
+                            <div class="setting-label">Graphics Preset</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-id="sel-preset" data-options="Normal,High,Very High,Ultra,Maximum" data-index="3">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">Ultra</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-section-title"><span>Ray Tracing</span></div>
+
+                        <div class="setting-row" data-desc="Enables hardware-accelerated Ray Tracing features.">
+                            <div class="setting-label">Enable Ray Tracing</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" id="toggle-rt" onclick="toggleSwitch(this); updateVRAM(400)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-row" data-desc="Quality of Ray Traced shadows.">
+                            <div class="setting-label">Ray Traced Shadows</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-id="sel-rt-shadows" data-options="Off,Normal,High,Ultra" data-index="3">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">Ultra</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-row" data-desc="Quality of physically accurate reflections.">
+                            <div class="setting-label">Ray Traced Reflections</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-id="sel-rt-reflections" data-options="Off,Normal,High,Ultra" data-index="2">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">High</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-row" data-desc="Controls realistic bounce lighting and indirect illumination via Ray Tracing.">
+                            <div class="setting-label">Global Illumination</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-id="sel-global-lighting" data-options="Off,Low,Medium,High,Ultra" data-index="3">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">High</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-row" data-desc="Ray traced accurate contact shadowing.">
+                            <div class="setting-label">Ambient Occlusion</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-id="sel-ao" data-options="Off,Standard,High" data-index="1">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">Standard</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-row" data-desc="Complexity of Bounding Volume Hierarchy for Ray Tracing calculation.">
+                            <div class="setting-label">BVH Quality</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-id="sel-bvh" data-options="Normal,High,Very High" data-index="2">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">Very High</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-section-title"><span>Frame Scaling</span></div>
+
+                        <div class="setting-row" data-desc="Enable Deep Learning Super Sampling for improved framerates.">
+                            <div class="setting-label">NVIDIA DLSS</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" id="toggle-dlss" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-row" data-desc="Anti-Aliasing technique. FXAA is fast, MSAA provides better quality.">
+                            <div class="setting-label">Anti-Aliasing</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-id="sel-aa" data-options="Off,FXAA,MSAA x2,MSAA x4,MSAA x8,TXAA" data-index="3">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">MSAA x4</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-row" data-desc="Adjust sharpness level for upscaling/DLSS.">
+                            <div class="setting-label">Sharpness</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="75" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">75</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GAMEPAD TAB -->
+                    <div class="tab-content" id="tab-gamepad">
+                        <div class="setting-section-title"><span>Controller</span></div>
+                        <div class="setting-row" data-desc="Enable or disable controller vibration feedback.">
+                            <div class="setting-label">Vibration</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Adjust controller aiming sensitivity.">
+                            <div class="setting-label">Sensitivity (Look)</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="50" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">50</span>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Adjust controller aiming sensitivity (Aiming down sights).">
+                            <div class="setting-label">Sensitivity (Aim)</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="40" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">40</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KEYBOARD / MOUSE TAB -->
+                    <div class="tab-content" id="tab-keyboard">
+                        <div class="setting-section-title"><span>Mouse Settings</span></div>
+                        <div class="setting-row" data-desc="Adjust mouse look sensitivity.">
+                            <div class="setting-label">Mouse Sensitivity</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="35" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">35</span>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Inverts the Y-axis for mouse movement.">
+                            <div class="setting-label">Invert Y Axis</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Controls mouse smoothing for linear inputs.">
+                            <div class="setting-label">Mouse Smoothing</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KEY BINDINGS TAB -->
+                    <div class="tab-content" id="tab-bindings">
+                        <div class="setting-section-title"><span>General Controls</span></div>
+                        <div class="setting-row" data-desc="Move Character Forward">
+                            <div class="setting-label">Move Forward</div>
+                            <div class="setting-control"><button class="keyboard-bind-btn" onclick="listenForKey(this)">W</button></div>
+                        </div>
+                        <div class="setting-row" data-desc="Move Character Backward">
+                            <div class="setting-label">Move Backward</div>
+                            <div class="setting-control"><button class="keyboard-bind-btn" onclick="listenForKey(this)">S</button></div>
+                        </div>
+                        <div class="setting-row" data-desc="Move Character Left">
+                            <div class="setting-label">Move Left</div>
+                            <div class="setting-control"><button class="keyboard-bind-btn" onclick="listenForKey(this)">A</button></div>
+                        </div>
+                        <div class="setting-row" data-desc="Move Character Right">
+                            <div class="setting-label">Move Right</div>
+                            <div class="setting-control"><button class="keyboard-bind-btn" onclick="listenForKey(this)">D</button></div>
+                        </div>
+                        <div class="setting-row" data-desc="Perform Jump Action">
+                            <div class="setting-label">Jump</div>
+                            <div class="setting-control"><button class="keyboard-bind-btn" onclick="listenForKey(this)">SPACE</button></div>
+                        </div>
+                    </div>
+
+                    <!-- AUDIO TAB -->
+                    <div class="tab-content" id="tab-audio">
+                        <div class="setting-section-title"><span>Volume Levels</span></div>
+                        <div class="setting-row" data-desc="Adjust the overall game volume.">
+                            <div class="setting-label">Master Volume</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="80" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">80</span>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Adjust the music volume.">
+                            <div class="setting-label">Music Volume</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="60" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">60</span>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Adjust SFX volume.">
+                            <div class="setting-label">SFX Volume</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="90" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">90</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CAMERA TAB -->
+                    <div class="tab-content" id="tab-camera">
+                        <div class="setting-section-title"><span>Camera Options</span></div>
+                        <div class="setting-row" data-desc="Adjust First Person Field of View.">
+                            <div class="setting-label">First Person FOV</div>
+                            <div class="setting-control">
+                                <input type="range" min="60" max="110" value="90" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">90</span>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Toggles camera bobbing while sprinting or walking.">
+                            <div class="setting-label">Camera Bobbing</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Toggles realistic camera shake from explosions and heavy impacts.">
+                            <div class="setting-label">Camera Shake</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DISPLAY TAB -->
+                    <div class="tab-content" id="tab-display">
+                        <div class="setting-section-title"><span>Monitor Options</span></div>
+                        <div class="setting-row" data-desc="Select the screen resolution.">
+                            <div class="setting-label">Resolution</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-options="1280x720,1920x1080,2560x1440,3840x2160" data-index="1">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">1920x1080</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Toggle between Fullscreen, Windowed, or Borderless Mode.">
+                            <div class="setting-label">Screen Type</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-options="Windowed,Fullscreen,Borderless" data-index="1">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">Fullscreen</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Synchronizes frame rate with monitor refresh rate to prevent screen tearing.">
+                            <div class="setting-label">VSync</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VOICE CHAT TAB -->
+                    <div class="tab-content" id="tab-voice">
+                        <div class="setting-section-title"><span>Voice Options</span></div>
+                        <div class="setting-row" data-desc="Enable or disable Voice Chat.">
+                            <div class="setting-label">Voice Chat Enabled</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Adjust incoming voice chat volume.">
+                            <div class="setting-label">Voice Chat Volume</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="80" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">80</span>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Adjust microphone input volume level.">
+                            <div class="setting-label">Microphone Sensitivity</div>
+                            <div class="setting-control">
+                                <input type="range" min="0" max="100" value="65" oninput="updateSliderVal(this)">
+                                <span class="slider-value-display">65</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOTIFICATIONS TAB -->
+                    <div class="tab-content" id="tab-notifications">
+                        <div class="setting-section-title"><span>Game Alerts</span></div>
+                        <div class="setting-row" data-desc="Enable in-game phone message alerts.">
+                            <div class="setting-label">Phone Notifications</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Enable social club invite alerts.">
+                            <div class="setting-label">Social Club Overlays</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="setting-row" data-desc="Show hints during gameplay.">
+                            <div class="setting-label">Help Text</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch on" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ROCKSTAR EDITOR TAB -->
+                    <div class="tab-content" id="tab-editor">
+                        <div class="setting-section-title"><span>Recording</span></div>
+                        <div class="setting-row" data-desc="Allows saving action replays to storage.">
+                            <div class="setting-label">Action Replay</div>
+                            <div class="setting-control">
+                                <div class="toggle-switch" onclick="toggleSwitch(this)">
+                                    <div class="knob"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-row" data-desc="Sets the recording quality of Rockstar Editor clips.">
+                            <div class="setting-label">Recording Quality</div>
+                            <div class="setting-control">
+                                <div class="gta-select" data-options="Standard,High,Uncompressed" data-index="1">
+                                    <span class="arrow left">&lt;</span>
+                                    <span class="gta-select-value">High</span>
+                                    <span class="arrow right">&gt;</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="panel-footer">
+                <div class="footer-desc" id="infobox">
+                    Select a setting to view its description.
+                </div>
+                <div class="footer-buttons">
+                    <button class="footer-btn" onclick="applyChanges()">
+                        <span class="key-indicator">SPACE</span> Apply Changes
+                    </button>
+                    <button class="footer-btn" id="btn-back">
+                        <span class="key-indicator">ESC</span> Back
+                    </button>
+                    <button class="footer-btn" id="btn-select">
+                        <span class="key-indicator">ENTER</span> Select
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // DOM Elements
+        const menuItems = document.querySelectorAll('.menu-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const infoBox = document.getElementById('infobox');
+        const vramCurrent = document.getElementById('vram-current');
+        const vramBar = document.getElementById('vram-bar');
+
+        let currentSelectedIndex = 6; // Default active (Graphics)
+        const totalItems = menuItems.length;
+
+        // Base VRAM Simulation
+        let baseVram = 2240;
+        let currentVram = 2840;
+        const maxVram = 8192;
+
+        // Initialize values
+        document.addEventListener('DOMContentLoaded', () => {
+            initSelects();
+            attachInteractionListeners();
+            updateVRAMBar();
+            triggerHoverDesc(document.querySelector('.setting-row')); // default hover logic
+            
+            // If loaded outside iframe, trigger animation immediately
+            if (window.self === window.top) {
+                setTimeout(() => document.body.classList.add('loaded'), 50);
+            }
+        });
+
+        // Triggered by parent frame seamlessly
+        window.showSettings = function() {
+            document.body.classList.remove('fade-out');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    document.body.classList.add('loaded');
+                });
+            });
+        };
+
+        // Sidebar Navigation Logic
+        menuItems.forEach((item, index) => {
+            item.addEventListener('click', () => {
+                switchTab(index);
+            });
+        });
+
+        function switchTab(index) {
+            // Remove active class from menu
+            menuItems.forEach(i => i.classList.remove('active'));
+            // Remove active class from tabs
+            tabContents.forEach(t => t.classList.remove('active'));
+
+            // Set new active
+            menuItems[index].classList.add('active');
+            currentSelectedIndex = index;
+            
+            const targetId = 'tab-' + menuItems[index].getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+            
+            // Focus first item logic is optional, just set infobox blank or to first item
+            const firstRow = document.getElementById(targetId).querySelector('.setting-row');
+            if(firstRow) triggerHoverDesc(firstRow);
+        }
+
+        // Toggle Switch Function
+        function toggleSwitch(element) {
+            element.classList.toggle('on');
+            playSound('select');
+            updateVRAM();
+        }
+
+        // Slider Function
+        function updateSliderVal(slider) {
+            const display = slider.nextElementSibling;
+            display.innerText = slider.value;
+            updateVRAM();
+        }
+
+        // Preset Costs & Sync Mapping
+        const costs = {
+            base: 2240,
+            rtEnable: 400,
+            rtShadows: [0, 50, 100, 200],
+            rtReflections: [0, 80, 150, 250],
+            globalIllumination: [0, 100, 200, 300, 400],
+            ambientOcclusion: [0, 40, 80],
+            bvh: [50, 150, 250],
+            aa: [0, 50, 100, 200, 400, 300],
+            dlss: -300
+        };
+
+        function onPresetChange(index) {
+            // Preset Indices: 0:Normal, 1:High, 2:Very High, 3:Ultra, 4:Maximum
+            const rtToggle = document.getElementById('toggle-rt');
+            const dlssToggle = document.getElementById('toggle-dlss');
+            
+            if (index == 0) { // Normal
+                rtToggle.classList.remove('on');
+                setSelectIndex('sel-rt-shadows', 0);
+                setSelectIndex('sel-rt-reflections', 0);
+                setSelectIndex('sel-aa', 1); // FXAA
+                setSelectIndex('sel-ao', 0); // Off
+                dlssToggle.classList.add('on');
+            } else if (index == 1) { // High
+                rtToggle.classList.add('on');
+                setSelectIndex('sel-rt-shadows', 1);
+                setSelectIndex('sel-rt-reflections', 1);
+                setSelectIndex('sel-aa', 2); // MSAA x2
+                setSelectIndex('sel-ao', 1); // Standard
+                dlssToggle.classList.add('on');
+            } else if (index == 2) { // Very High
+                rtToggle.classList.add('on');
+                setSelectIndex('sel-rt-shadows', 2);
+                setSelectIndex('sel-rt-reflections', 2);
+                setSelectIndex('sel-aa', 3); // MSAA x4
+                setSelectIndex('sel-ao', 2); // High
+                dlssToggle.classList.add('on');
+            } else if (index >= 3) { // Ultra+
+                rtToggle.classList.add('on');
+                setSelectIndex('sel-rt-shadows', 3);
+                setSelectIndex('sel-rt-reflections', 3);
+                setSelectIndex('sel-aa', 4); // MSAA x8
+                setSelectIndex('sel-ao', 2); // High
+                dlssToggle.classList.remove('on'); // Use native AA
+            }
+            updateVRAM();
+        }
+
+        function setSelectIndex(id, index) {
+            const el = document.querySelector(`[data-id="${id}"]`);
+            if (!el) return;
+            const options = el.getAttribute('data-options').split(',');
+            el.setAttribute('data-index', index);
+            el.querySelector('.gta-select-value').innerText = options[index];
+            updateSelectArrows(el.querySelector('.arrow.left'), el.querySelector('.arrow.right'), index, options.length);
+        }
+
+        // Custom Select (Dropdown) Logic
+        function initSelects() {
+            const selects = document.querySelectorAll('.gta-select');
+            selects.forEach(select => {
+                const options = select.getAttribute('data-options').split(',');
+                let currentIndex = parseInt(select.getAttribute('data-index') || 0);
+                const valDisplay = select.querySelector('.gta-select-value');
+                const leftArrow = select.querySelector('.arrow.left');
+                const rightArrow = select.querySelector('.arrow.right');
+                const id = select.getAttribute('data-id');
+
+                // Initial render
+                updateSelectArrows(leftArrow, rightArrow, currentIndex, options.length);
+                valDisplay.innerText = options[currentIndex];
+
+                leftArrow.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(currentIndex > 0) {
+                        currentIndex--;
+                        applySelectChange(select, currentIndex, options, leftArrow, rightArrow, valDisplay, id);
+                    }
+                });
+
+                rightArrow.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(currentIndex < options.length - 1) {
+                        currentIndex++;
+                        applySelectChange(select, currentIndex, options, leftArrow, rightArrow, valDisplay, id);
+                    }
+                });
+            });
+        }
+
+        function applySelectChange(select, index, options, left, right, display, id) {
+            select.setAttribute('data-index', index);
+            display.innerText = options[index];
+            updateSelectArrows(left, right, index, options.length);
+            playSound('nav');
+            
+            if (id === 'sel-preset') onPresetChange(index);
+            else updateVRAM();
+        }
+
+        function updateSelectArrows(left, right, index, length) {
+            left.classList.toggle('disabled', index === 0);
+            right.classList.toggle('disabled', index === length - 1);
+        }
+
+        // VRAM Bar Update (Declarative Logic)
+        function updateVRAM() {
+            let total = costs.base;
+            
+            // Ray Tracing
+            if (document.getElementById('toggle-rt').classList.contains('on')) {
+                total += costs.rtEnable;
+                total += costs.rtShadows[getIdx('sel-rt-shadows')] || 0;
+                total += costs.rtReflections[getIdx('sel-rt-reflections')] || 0;
+                total += costs.globalIllumination[getIdx('sel-global-lighting')] || 0;
+                total += costs.bvh[getIdx('sel-bvh')] || 0;
+            }
+
+            // Other Graphics
+            total += costs.ambientOcclusion[getIdx('sel-ao')] || 0;
+            total += costs.aa[getIdx('sel-aa')] || 0;
+            
+            // DLSS
+            if (document.getElementById('toggle-dlss').classList.contains('on')) {
+                total += costs.dlss;
+            }
+            
+            // Sliders (simulated cost)
+            const sharpness = document.querySelector('input[type="range"]'); 
+            if(sharpness) total += parseInt(sharpness.value) / 2;
+
+            currentVram = Math.floor(total);
+            updateVRAMBar();
+        }
+
+        function getIdx(id) {
+            const el = document.querySelector(`[data-id="${id}"]`);
+            return el ? parseInt(el.getAttribute('data-index') || 0) : 0;
+        }
+
+        function updateVRAMBar() {
+            vramCurrent.innerText = currentVram;
+            let percentage = (currentVram / maxVram) * 100;
+            vramBar.style.width = percentage + '%';
+
+            // Colors based on usage
+            vramBar.className = 'memory-fill'; // reset
+            if(percentage > 90) vramBar.classList.add('danger');
+            else if(percentage > 70) vramBar.classList.add('warning');
+        }
+
+        // Hover & Interaction listeners
+        function attachInteractionListeners() {
+            // Setting Rows
+            const rows = document.querySelectorAll('.setting-row');
+            rows.forEach(row => {
+                row.addEventListener('mouseenter', () => {
+                    triggerHoverDesc(row);
+                    playSound('hover');
+                });
+            });
+
+            // Menu Items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.addEventListener('mouseenter', () => playSound('hover'));
+                item.addEventListener('click', () => playSound('select'));
+            });
+
+            // Switches, Selectors, Range
+            const interactives = document.querySelectorAll('.toggle-switch, .gta-select, input[type="range"], .keyboard-bind-btn, .footer-btn');
+            interactives.forEach(el => {
+                el.addEventListener('mouseenter', () => playSound('hover'));
+                el.addEventListener('click', () => playSound('select'));
+            });
+        }
+
+        function triggerHoverDesc(row) {
+            if(row && row.hasAttribute('data-desc')) {
+                infoBox.innerText = row.getAttribute('data-desc');
+            } else {
+                infoBox.innerText = "Select a setting to view its description.";
+            }
+        }
+
+        // Audio Implementation
+        const navSound = document.createElement('audio');
+        navSound.src = 'models/gta-menu.mp3';
+        navSound.preload = 'auto';
+        document.body.appendChild(navSound);
+
+        function playSound(type) {
+            navSound.currentTime = 0;
+            navSound.volume = 0.5;
+            navSound.play().catch(e => {});
+        }
+
+        // Key Binding Logic (Simple visual implementation)
+        let activeBindBtn = null;
+        function listenForKey(btn) {
+            if (activeBindBtn) {
+                activeBindBtn.classList.remove('listening');
+                activeBindBtn.innerText = activeBindBtn.dataset.prevKey;
+            }
+            activeBindBtn = btn;
+            btn.dataset.prevKey = btn.innerText;
+            btn.innerText = "PRESS KEY...";
+            btn.classList.add('listening');
+        }
+
+        // Keyboard Event Handling (Global)
+        document.addEventListener('keydown', (e) => {
+            // Key Binding Capture
+            if (activeBindBtn) {
+                e.preventDefault();
+                let keyName = e.key.toUpperCase();
+                if(e.keyCode === 32) keyName = "SPACE"; // Special case
+                activeBindBtn.innerText = keyName;
+                activeBindBtn.classList.remove('listening');
+                activeBindBtn = null;
+                playSound('select');
+                return;
+            }
+
+            // Keyboard Navigation
+            if (e.key === 'ArrowUp') {
+                let newIndex = currentSelectedIndex - 1;
+                if (newIndex < 0) newIndex = totalItems - 1;
+                switchTab(newIndex);
+                playSound('nav');
+            } else if (e.key === 'ArrowDown') {
+                let newIndex = currentSelectedIndex + 1;
+                if (newIndex >= totalItems) newIndex = 0;
+                switchTab(newIndex);
+                playSound('nav');
+            } else if (e.key === 'Escape') {
+                goBack();
+            } else if (e.key === ' ' && document.activeElement.tagName !== "BUTTON") {
+                // If SPACE and not focusing on keybind
+               applyChanges();
+            }
+        });
+
+        // Apply Changes
+        function applyChanges() {
+            playSound('select');
+            alert("Changes have been successfully applied and saved.");
+        }
+        
+        // Setup direct button clicks for Footer
+        document.getElementById('btn-back').addEventListener('click', () => {
+            goBack();
+        });
+        
+        function goBack() {
+            playSound('select');
+            document.body.classList.remove('loaded');
+            document.body.classList.add('fade-out');
+            
+            if (window.parent && window.parent.closeSettings) {
+                window.parent.closeSettings();
+            } else {
+                setTimeout(() => {
+                    window.location.href = 'index.html?skip=true';
+                }, 500);
+            }
+        }
+        document.getElementById('btn-select').addEventListener('click', () => {
+            // Simply a visual cue from the game, equivalent to clicking a setting
+        });
+
+    </script>
+</body>
+</html>
