@@ -23,3 +23,7 @@ This project recreates the iconic loading experience similar to GTA V, with cust
 - HTML5
 - CSS3
 - JavaScript (Vanilla)
+
+---
+
+just for education and learning perpus 🤩
